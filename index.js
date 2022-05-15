@@ -4,6 +4,7 @@ const port = process.env.PORT || 8000 ;
 var cors = require('cors')
 require('dotenv').config()
 const { MongoClient, ServerApiVersion } = require('mongodb');
+var jwt = require('jsonwebtoken');
 
 
 
@@ -23,6 +24,7 @@ async function run(){
      await client.connect();
      const collection = client.db("Doctors").collection("services");
      const bookingappoinments = client.db("pattients").collection("appoinments");
+     const userinformation = client.db("user").collection("information");
 
     //  get service fromm database
      app.get("/services" , async(req,res)=> {
@@ -73,7 +75,7 @@ async function run(){
 
     } )
        
-    // show dashbord in pasttiont data
+    // show dashbord in pattiont data
     // for finf multiple in database that why we will use find(query) if we will give here findOne() this data will give 0
      app.get('/appoinment' ,async(req,res)=> {
        const appoinmentpattientemail = req.query.appoinmentpattientemail;
@@ -81,6 +83,23 @@ async function run(){
        const findbayName = await bookingappoinments.find(query).toArray()
        res.send(findbayName)
      } ) 
+
+     // user information store in db with jwttoken
+     app.put('/user/:email' , async(req,res)=> {
+       const email = req.params.email;
+       console.log(email)
+       const user = req.body;
+       const filter= {email: email}
+       const options = { upsert: true };
+       const updateDoc = {
+        $set: user
+      }
+      const storeuserinformation = await userinformation.updateOne(filter,updateDoc, options)
+      res.send(storeuserinformation)
+     })
+      
+
+
 
 
    }
