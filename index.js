@@ -40,7 +40,7 @@ async function run(){
       const userappointmnettakingform = req.body;
       console.log(userappointmnettakingform);
       const query ={doctorcategorey: userappointmnettakingform.doctorcategorey,
-          appointmentDate: userappointmnettakingform.appointmentDate  }
+          appointmentDate: userappointmnettakingform.appointmentDate , appoinmentpattientemail:userappointmnettakingform.appoinmentpattientemail}
       const existsuser = await bookingappoinments.findOne(query)
       if(existsuser){
         return res.send ({success: false, userappointmnettakingform: existsuser })
@@ -53,7 +53,7 @@ async function run(){
 
     // slots minus user taking appoinment minus slots from slot tabe/{array}
     app.get('/available' , async( req,res )=> {
-      const  appointmentDate = req.query.appointmentDate || "May 15, 2022"
+      const  appointmentDate = req.query.appointmentDate
 
       //1st  get all data from coolection mongodb
       const services = await collection.find().toArray()
@@ -66,19 +66,21 @@ async function run(){
         const servicesbookings = bookingsservice.filter(booking => service.categorey === booking.doctorcategorey)
         const booked = servicesbookings.map(s=> s.appoinmentslot);
         const availableslots = service.slots.filter(a=> !booked.includes(a))
-        service.availableslots = availableslots
+        service.slots = availableslots
       })
      
       res.send(services)
 
     } )
        
-    // services.forEach(service => {
-    //   const servicesbookings = bookingsservice.filter(booking => booking.doctorcategorey === service.categorey);
-    //   const booked =  servicesbookings.map( s => s.appoinmentslot )
-    //   const availableslots = service.slots.filter(a=> !booked.includes(a) )
-    //   service.availableslots = availableslots;
-    // }) 
+    // show dashbord in pasttiont data
+    // for finf multiple in database that why we will use find(query) if we will give here findOne() this data will give 0
+     app.get('/appoinment' ,async(req,res)=> {
+       const appoinmentpattientemail = req.query.appoinmentpattientemail;
+       const query = {appoinmentpattientemail:appoinmentpattientemail}
+       const findbayName = await bookingappoinments.find(query).toArray()
+       res.send(findbayName)
+     } ) 
 
 
    }
