@@ -7,15 +7,36 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 var jwt = require('jsonwebtoken');
 
 
-
 // midle taare
 app.use(cors())
 app.use(express.json())
 
 
+
 // mongo db
 const uri = `mongodb+srv://${process.env.USER}:${process.env.PASSWORD_KEY}@cluster0.82lu9.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+
+
+
+// verrify jwt token function
+
+ function verrifyjwt (req,res,next){
+  const tokengetfromclient = req.headers.authorization
+  if(!tokengetfromclient){
+    return res.status(403).send({massage : "unauthorized access"})
+  }
+  const token = tokengetfromclient.split(" ")[1];
+  jwt.verify(token, process.env.JWT_SECRET , function(err, decoded){
+    if(err){
+      return res.status(401).send({message : "forbidden access" })
+    }
+    // console.log( "decoded", decoded);
+    req.decoded = decoded
+  })
+  next();
+ }
+// jwr verify done here
 
 
 async function run(){
@@ -33,14 +54,13 @@ async function run(){
        const result = await cursor.toArray();
        res.send(result)
      } )
-
     //  prodcuts get end here
 
 
     // pattinet appoint booking detilas
     app.post('/appoinments' , async(req,res) => {
       const userappointmnettakingform = req.body;
-      console.log(userappointmnettakingform);
+      // 
       const query ={doctorcategorey: userappointmnettakingform.doctorcategorey,
           appointmentDate: userappointmnettakingform.appointmentDate , appoinmentpattientemail:userappointmnettakingform.appoinmentpattientemail}
       const existsuser = await bookingappoinments.findOne(query)
@@ -70,24 +90,42 @@ async function run(){
         const availableslots = service.slots.filter(a=> !booked.includes(a))
         service.slots = availableslots
       })
-     
       res.send(services)
-
     } )
+
        
     // show dashbord in pattiont data
-    // for finf multiple in database that why we will use find(query) if we will give here findOne() this data will give 0
-     app.get('/appoinment' ,async(req,res)=> {
+    // for find multiple in database that why we will use find(query) if we will give here findOne() this data will give 0
+     app.get('/appoinment', verrifyjwt, async(req,res)=> {
        const appoinmentpattientemail = req.query.appoinmentpattientemail;
-       const query = {appoinmentpattientemail:appoinmentpattientemail}
-       const findbayName = await bookingappoinments.find(query).toArray()
-       res.send(findbayName)
-     } ) 
+      const decoded = req.decoded.email ;
+      if(decoded === appoinmentpattientemail ){
+        const query = {appoinmentpattientemail:appoinmentpattientemail}
+        const findbayName = await bookingappoinments.find(query).toArray()
+        return res.send(findbayName)
+      }
+       else{
+        return res.status(403).send({message : "forbidden access"})
+       }
+     }) 
 
+
+    //  make admin role
+    app.put('/user/admin/:email', verrifyjwt, async(req,res)=> {
+      const email = req.params.email;
+      console.log(email);
+      const filter= {email: email}
+      const updateDoc = {
+       $set: {role : "admin"}
+     }
+     const storeuserinformation = await userinformation.updateOne(filter,updateDoc)
+     res.send(storeuserinformation)
+    })
+
+    
      // user information store in db with jwttoken
      app.put('/user/:email' , async(req,res)=> {
-       const email = req.params.email;
-       console.log(email)
+       const email = req.params.email ;
        const user = req.body;
        const filter= {email: email}
        const options = { upsert: true };
@@ -95,10 +133,18 @@ async function run(){
         $set: user
       }
       const storeuserinformation = await userinformation.updateOne(filter,updateDoc, options)
+       storeuserinformation.token = jwt.sign({email: email}, process.env.JWT_SECRET, { expiresIn: '1h' })
       res.send(storeuserinformation)
+      // as well you can use token = ...
+      // and res.send({storeuserinformation , toke})
+      // A numeric value is interpreted as a seconds count. If you use a string be sure you provide the time units (days, hours, etc), otherwise milliseconds unit is used by default ("120" is equal to "120ms").
      })
-      
 
+      // get all users from data base that we will create in app.put methods
+      app.get('/user',  verrifyjwt, async(req,res)=>{
+        const allregisteruser = await userinformation.find().toArray()
+        res.send(allregisteruser)
+      })
 
 
 
