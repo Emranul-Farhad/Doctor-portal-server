@@ -39,6 +39,8 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 // jwr verify done here
 
 
+ 
+
 async function run(){
     
    try{
@@ -46,6 +48,22 @@ async function run(){
      const collection = client.db("Doctors").collection("services");
      const bookingappoinments = client.db("pattients").collection("appoinments");
      const userinformation = client.db("user").collection("information");
+     const doctorsformation = client.db("Doctorsinfo").collection("Docinfo");
+    //  cosnt 
+
+  //  verify admin process
+    const verifyadmin = async(req,res,next) =>{
+      const requester = req.decoded.email;
+      const adminsrequester = await userinformation.findOne({email:requester})
+      if(adminsrequester.role === 'admin'){
+        next()
+      }
+      else{
+        res.status(403).send({message: " forbidden access"})
+      }
+    }
+         
+   
 
     //  get service fromm database
      app.get("/services" , async(req,res)=> {
@@ -110,21 +128,58 @@ async function run(){
      }) 
 
 
+  
+
     //  make admin role
-    app.put('/user/admin/:email', verrifyjwt, async(req,res)=> {
-      const email = req.params.email;
-      console.log(email);
+    app.put('/user/admin/:email', verrifyjwt,verifyadmin, async(req,res)=> {
+      const email = req.params.email;    
       const filter= {email: email}
       const updateDoc = {
        $set: {role : "admin"}
      }
      const storeuserinformation = await userinformation.updateOne(filter,updateDoc)
-     res.send(storeuserinformation)
+      return res.send(storeuserinformation)  
+      
     })
+
+
+    // app.put('/user/admin/:email', verrifyjwt, async(req,res)=> {
+    //   const email = req.params.email;
+    //   const requester = req.decoded.email;
+    //   const adminsrequester = await userinformation.findOne({email : requester})
+    //   if (adminsrequester.role === 'admin'){
+    //   const filter= {email: email}
+    //   const updateDoc = {
+    //    $set: {role : "admin"}
+    //  }
+    //  const storeuserinformation = await userinformation.updateOne(filter,updateDoc)
+    //   return res.send(storeuserinformation)
+    //   }
+    //   else{
+    //    return res.status(403).send({message: "forbidden access"})
+    //   }
+      
+    // })
+
+    //  make role admin end here
+      //  app.get('/admin/:email',async(req,res)=>{
+      //   const email = req.params.email;
+      //   const isadmin = await userinformation.findOne({email: email})
+      //   const admins = isadmin.role === "admin"
+      //   res.send({admin : admins})
+      //  })      
+      
+      app.get('/admin/:email' , async(req,res)=> {
+        const email = req.params.email;
+        const checkadminemail = await userinformation.findOne({email : email})
+        const iffindemail = checkadminemail.role === 'admin';
+        res.send({admin : iffindemail})
+      } )
+
 
     
      // user information store in db with jwttoken
-     app.put('/user/:email' , async(req,res)=> {
+     app.put('/user/:email',  async(req,res)=> {
        const email = req.params.email ;
        const user = req.body;
        const filter= {email: email}
@@ -144,6 +199,28 @@ async function run(){
       app.get('/user',  verrifyjwt, async(req,res)=>{
         const allregisteruser = await userinformation.find().toArray()
         res.send(allregisteruser)
+      })
+
+      // doctor information gret from clients and store indatabase
+      app.post('/doctors', verrifyjwt, verifyadmin, async(req,res)=> {
+        const doctors = req.body;
+        console.log(req.body)
+        const getinfo = await doctorsformation.insertOne(doctors)
+        res.send(getinfo)
+      })
+
+      // doctos information grt from database
+      app.get('/doctors', async(req,res)=> {
+        const doctorsinfo = await doctorsformation.find().toArray()
+        res.send(doctorsinfo)
+      })
+
+      // doctors data deleted from db and 
+      app.delete('/doctors/:name', async(req,res)=> {
+        const name = req.params.name;    
+        const filter = {name : name}
+        const doctorsinfo = await doctorsformation.deleteOne(filter)
+        res.send(doctorsinfo)
       })
 
 
