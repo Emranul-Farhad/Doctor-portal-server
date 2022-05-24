@@ -3,8 +3,11 @@ const app = express()
 const port = process.env.PORT || 8000 ;
 var cors = require('cors')
 require('dotenv').config()
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 var jwt = require('jsonwebtoken');
+// sreipr requere
+const stripe = require("stripe")(process.env.STRIPE_KEY);
+
 
 
 // midle taare
@@ -49,6 +52,7 @@ async function run(){
      const bookingappoinments = client.db("pattients").collection("appoinments");
      const userinformation = client.db("user").collection("information");
      const doctorsformation = client.db("Doctorsinfo").collection("Docinfo");
+     const paymentinfo = client.db("payment").collection("payments");
     //  cosnt 
 
   //  verify admin process
@@ -128,7 +132,58 @@ async function run(){
      }) 
 
 
+    //  app.get('/appoinment/:id', async(req,res)=>{
+    //    const id = req.params.id;
+    //    const query =  {_id : ObjectId(id)}
+    //    const idwise = await bookingappoinments.findOne(query)
+    //    res.send(idwise)
+    //  })
   
+    // id wise information collection for payments
+    app.get('/appoinment/:id',  async(req,res)=> {
+      const id = req.params.id;   
+      const query = {_id : ObjectId(id)}
+      const idwiseonformation = await bookingappoinments.findOne(query)
+      res.send(idwiseonformation)
+    })
+
+
+    // booking appoinments update payment wise payment info store
+
+     app.patch('/appoinment/:id' , async(req,res)=> {
+       const id = req.params.id;
+       console.log(id);
+       const payment = req.body; 
+       const filter = {_id :ObjectId(id)};
+       const updateDoc = {
+        $set: {
+          paid : true,
+          transition : payment.transition,
+        },
+      }
+      const result = await bookingappoinments.updateOne(filter,updateDoc)
+      const storepayment = await paymentinfo.insertOne(payment)
+      res.send(updateDoc)
+     })
+   
+
+  //  app.patch('/appoinmet/:id' , async(req,res)=> {
+  //    const id = req.params.id
+  //    const bodyget = req.body
+  //    const filter = {id: ObjectId(id)};
+  //    const updateDoc = {
+  //     $set: {
+  //       paid : true ,
+  //       transition : bodyget.transition 
+  //     },
+  //   }
+  //   const result = await bookingappoinments.updateOne(filter , updateDoc)
+  //   const paymentinfo = await paymentinfo.insertOne(bodyget)
+  //   res.send(updateDoc)
+
+  //  } )
+
+
 
     //  make admin role
     app.put('/user/admin/:email', verrifyjwt,verifyadmin, async(req,res)=> {
@@ -222,6 +277,27 @@ async function run(){
         const doctorsinfo = await doctorsformation.deleteOne(filter)
         res.send(doctorsinfo)
       })
+
+
+      // get payment for services
+      app.post("/create-payment-intent", async (req, res)=> {
+        const price = req.body ;
+        const amounts = price.price;
+        console.log(amounts)
+        // const prices = {price: price.price}
+        const amount = amounts*100 ;
+        console.log(amount);
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: 'usd',
+          payment_method_types: ['card']     
+        });
+        res.send({clientSecret: paymentIntent.client_secret});
+      })
+
+    //  booking appoinments update payment wise
+
+
 
 
 
