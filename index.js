@@ -30,6 +30,7 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
     return res.status(403).send({massage : "unauthorized access"})
   }
   const token = tokengetfromclient.split(" ")[1];
+  
   jwt.verify(token, process.env.JWT_SECRET , function(err, decoded){
     if(err){
       return res.status(401).send({message : "forbidden access" })
@@ -82,7 +83,6 @@ async function run(){
     // pattinet appoint booking detilas
     app.post('/appoinments' , async(req,res) => {
       const userappointmnettakingform = req.body;
-      // 
       const query ={doctorcategorey: userappointmnettakingform.doctorcategorey,
           appointmentDate: userappointmnettakingform.appointmentDate , appoinmentpattientemail:userappointmnettakingform.appoinmentpattientemail}
       const existsuser = await bookingappoinments.findOne(query)
@@ -224,6 +224,7 @@ async function run(){
       //   res.send({admin : admins})
       //  })      
       
+      // / admin privatre route only admin can access this api's route
       app.get('/admin/:email' , async(req,res)=> {
         const email = req.params.email;
         const checkadminemail = await userinformation.findOne({email : email})
@@ -264,6 +265,7 @@ async function run(){
         res.send(getinfo)
       })
 
+      
       // doctos information grt from database
       app.get('/doctors', async(req,res)=> {
         const doctorsinfo = await doctorsformation.find().toArray()
@@ -279,6 +281,7 @@ async function run(){
       })
 
 
+      
       // get payment for services
       app.post("/create-payment-intent", async (req, res)=> {
         const price = req.body ;
